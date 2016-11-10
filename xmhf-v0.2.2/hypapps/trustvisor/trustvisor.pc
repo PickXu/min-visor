@@ -1,0 +1,9 @@
+prefix=/usr/local
+includedir=${prefix}/include
+
+Name: trustvisor
+Description: trustvisor hypervisor
+Requires:
+Version: 0.2
+Libs:
+Cflags: -I${includedir}
