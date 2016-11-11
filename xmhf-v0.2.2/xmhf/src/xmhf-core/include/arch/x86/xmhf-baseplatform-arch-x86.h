@@ -228,8 +228,7 @@ typedef struct _vcpu {
 	u32 vmx_guest_unrestricted;		//this is 1 if the CPU VMX implementation supports unrestricted guest execution
   struct _vmx_vmcsfields vmcs;   //the VMCS fields
 
-  u64 guest_IDTR_base;
-  u32 guest_IDTR_limit;
+  u64 guest_idt_base;
 
 } __attribute__((packed)) VCPU;
 

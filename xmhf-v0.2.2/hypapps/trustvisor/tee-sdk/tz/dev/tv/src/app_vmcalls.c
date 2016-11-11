@@ -237,6 +237,17 @@ int tv_pal_unregister(void *entry)
                 0, 0, 0);
 }
 
+//XUM
+int tv_vcpu_lock(void)
+{
+  return vmcall(TV_HC_VCPU_LOCK,0,0,0,0);
+}
+
+int tv_vcpu_unlock(void)
+{
+  return vmcall(TV_HC_VCPU_UNLOCK,0,0,0,0);
+}
+
 int tv_pal_share(const void *entry, void **start, size_t *len, size_t count)
 {
   int i;

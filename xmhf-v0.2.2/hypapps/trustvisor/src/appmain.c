@@ -231,6 +231,29 @@ static u32 do_TV_HC_UNREG(VCPU *vcpu, struct regs *r)
   return ret;
 }
 
+//XUM
+
+static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
+{
+  //u64 *timer_handler;
+  printf("\nCPU%02x: VCPU_LOCK(%d) handler...",vcpu->id, r->eax); 
+  
+  vcpu->vmcs.guest_RFLAGS &= 0xfffffffffffffdff;
+  
+  return 0;
+}
+
+static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
+{
+  printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
+  
+  vcpu->vmcs.guest_RFLAGS |= 0x0000000000000200;
+ 
+  return 0;
+
+}
+
+
 static u32 do_TV_HC_UTPM_SEAL_DEPRECATED(VCPU *vcpu, struct regs *r)
 {
   struct inbuf_s plainbuf_s;
@@ -541,6 +564,10 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
     HANDLE( TV_HC_TPMNVRAM_GETSIZE );
     HANDLE( TV_HC_TPMNVRAM_READALL );
     HANDLE( TV_HC_TPMNVRAM_WRITEALL );
+    //XUM: handle vcpu locking/unlocking
+    HANDLE( TV_HC_VCPU_LOCK);
+    HANDLE( TV_HC_VCPU_UNLOCK);
+
   default:
     {
       eu_err("FATAL ERROR: Invalid vmmcall cmd (%d)", cmd);

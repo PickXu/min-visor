@@ -128,6 +128,13 @@ int tv_pal_register(const struct tv_pal_sections *pageinfo,
  */
 int tv_pal_unregister(void *entry);
 
+
+//XUM
+int tv_vcpu_lock(void);
+
+int tv_vcpu_unlock(void);
+
+
 /* share memory ranges with a PAL.
    The memory areas must be page-aligned, and must not be swapped out.
    (use tv_lock_range and\or tv_touch_range)
