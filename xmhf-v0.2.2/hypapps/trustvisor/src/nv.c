@@ -48,16 +48,18 @@
 
 #include <stdbool.h>
 
-#include <scode.h> /* copy_from_guest */
+//#include <scode.h> /* copy_from_guest */
 #include <random.h> /* rand_bytes_or_die() */
 #include <nv.h>
 
 #include <tv_log.h>
 
+#ifdef __PAL__
 /* defined in scode.c */
 /* TODO: more elegant organization of these data structures */
 extern int *scode_curr;
 extern whitelist_entry_t *whitelist;
+#endif
 
 
 /**
@@ -317,6 +319,7 @@ int trustvisor_nv_get_mss(unsigned int locality, uint32_t idx,
  * **********************************************************
  */
 
+#ifdef __PAL__
 /**
  * Only one PAL on the entire system is granted privileges to
  * {getsize|readall|writeall} the actual hardware TPM NV Index
@@ -482,6 +485,7 @@ uint32_t hc_tpmnvram_writeall(VCPU* vcpu, uint32_t in_addr) {
 		
   return rv;
 }
+#endif
 
 /* Local Variables: */
 /* mode:c           */

@@ -228,6 +228,8 @@ u32 xmhf_smpguest_arch_x86vmx_eventhandler_hwpgtblviolation(VCPU *vcpu, u32 padd
 	g_vmx_lapic_npf_verification_guesttrapping = true;
   #endif
 	
+  // XUM: example of disabling guest interrupts by clearing guest IF!!!
+
   //disable interrupts by clearing guest IF on this CPU until we get 
   //control in lapic_access_dbexception after a DB exception
   vcpu->vmcs.guest_RFLAGS &= ~(EFLAGS_IF);
@@ -321,6 +323,7 @@ void xmhf_smpguest_arch_x86vmx_eventhandler_dbexception(VCPU *vcpu, struct regs 
 		#endif
       }else{
         #ifndef __XMHF_VERIFICATION__
+  			// XUM: Could disable IPI here in a nasty way...
 			//neither an INIT or SIPI, just propagate this IPI to physical LAPIC
 			*((u32 *)dst_registeraddress) = value_tobe_written;
 		#endif //TODO: hardware modeling
@@ -357,6 +360,7 @@ void xmhf_smpguest_arch_x86vmx_eventhandler_dbexception(VCPU *vcpu, struct regs 
 	vmx_lapic_changemapping(vcpu, g_vmx_lapic_base, g_vmx_lapic_base, VMX_LAPIC_UNMAP);
   }
 
+  //XUM: restore interrupt for guest
   //restore guest IF and TF
   vcpu->vmcs.guest_RFLAGS &= ~(EFLAGS_IF);
   vcpu->vmcs.guest_RFLAGS &= ~(EFLAGS_TF);

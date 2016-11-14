@@ -55,10 +55,10 @@
  */
 
 #include <xmhf.h> 
-
-#include <malloc.h>
-#include <scode.h>
-#include <hc_utpm.h>
+#include <trustvisor.h>
+//#include <malloc.h>
+//#include <scode.h>
+//#include <hc_utpm.h>
 #include <nv.h>
 
 #include <tv_log.h>
@@ -71,18 +71,20 @@ const cmdline_option_t gc_trustvisor_available_cmdline_options[] = {
   { NULL, NULL }
 };
 
+/*
 bool cmdline_get_nvenforce(char param_vals[][MAX_VALUE_LEN]) {
     const char *nvenforce = cmdline_get_option_val(gc_trustvisor_available_cmdline_options,
                                                    param_vals,
                                                    "nvenforce");
     if ( nvenforce == NULL || *nvenforce == '\0' )
-        return true; /* desired default behavior is YES, DO ENFORCE */
+        return true; // desired default behavior is YES, DO ENFORCE 
 
     if ( strncmp(nvenforce, "false", 6 ) == 0 )
         return false;
 
     return true;
 }
+*/
 
 /* lazy translation table to go from ascii hex to binary, one nibble
  * at a time */
@@ -97,14 +99,15 @@ const uint8_t gc_asc2nib[] = {
 
 /* allow caller to query whether param exists on cmdline by invoking
  * with NULL reqd_pcr0 */
-bool cmdline_get_nvpalpcr0(char param_vals[][MAX_VALUE_LEN], /* in */
-                           uint8_t *reqd_pcr0) {   /* out */
+/*
+bool cmdline_get_nvpalpcr0(char param_vals[][MAX_VALUE_LEN], // in 
+                           uint8_t *reqd_pcr0) {   // out 
     int i;
     const char *ascii = cmdline_get_option_val(gc_trustvisor_available_cmdline_options,
                                                param_vals,
                                                "nvpalpcr0");
     if ( ascii == NULL || *ascii == '\0' )
-        return false; /* no param found */
+        return false; // no param found 
 
     if ( reqd_pcr0 == NULL )
         return true;
@@ -114,20 +117,23 @@ bool cmdline_get_nvpalpcr0(char param_vals[][MAX_VALUE_LEN], /* in */
 
     return true;
 }
+*/
 
 void parse_boot_cmdline(const char *cmdline) {
   char param_vals[ARRAY_SIZE(gc_trustvisor_available_cmdline_options)][MAX_VALUE_LEN];
 
   cmdline_parse(cmdline, gc_trustvisor_available_cmdline_options, param_vals);
+  /*
   g_nvenforce = cmdline_get_nvenforce(param_vals);
   if(!cmdline_get_nvpalpcr0(param_vals, g_nvpalpcr0) && g_nvenforce) {
-    /* Emit warning that enforcing uPCR[0] for NV access doesn't make
-     * sense without specifying which PAL _should_ have access */
+    // Emit warning that enforcing uPCR[0] for NV access doesn't make
+    // sense without specifying which PAL _should_ have access
     eu_warn("WARNING: NV enforcement ENABLED, but NVPAL's uPCR[0] UNSPECIFIED!");
   }
 
   eu_trace("NV Enforcement %s", g_nvenforce ? "ENABLED" : "DISABLED");
   print_hex("NV uPCR[0] required to be: ", g_nvpalpcr0, sizeof(g_nvpalpcr0));
+  */
 }
 
 /**
@@ -146,7 +152,9 @@ u32 tv_app_main(VCPU *vcpu, APP_PARAM_BLOCK *apb){
     eu_trace("CPU(0x%02x) apb->cmdline: \"%s\"", vcpu->id, apb->cmdline);
     parse_boot_cmdline(apb->cmdline);
 
+#ifdef __PAL__
     init_scode(vcpu);
+#endif
   }
 
   /* force these to be linked in */
@@ -164,6 +172,8 @@ struct outbuf_s {
   u32 len_gva;
 };
 
+
+#ifdef __PAL__
 static u32 do_TV_HC_SHARE(VCPU *vcpu, struct regs *r)
 {
   u32 scode_entry, addrs_gva, lens_gva, count;
@@ -195,6 +205,7 @@ static u32 do_TV_HC_SHARE(VCPU *vcpu, struct regs *r)
   free(lens);
   return ret;
 }
+#endif
 
 static u32 do_TV_HC_TEST(VCPU *vcpu, struct regs *r)
 {
@@ -203,16 +214,17 @@ static u32 do_TV_HC_TEST(VCPU *vcpu, struct regs *r)
   return 0;
 }
 
+#ifdef __PAL__
 static u32 do_TV_HC_REG(VCPU *vcpu, struct regs *r)
 {
-  u32 scode_info, /*scode_sp,*/ scode_pm, scode_en;
+  u32 scode_info,  scode_pm, scode_en;
   u32 ret;
   
-  scode_info = r->ecx; /* sensitive code as guest virtual address */
-  scode_pm = r->esi; /* sensitive code params information address */
-  scode_en = r->edi; /* sensitive code entry point in edi */
+  scode_info = r->ecx; // sensitive code as guest virtual address 
+  scode_pm = r->esi; // sensitive code params information address 
+  scode_en = r->edi; // sensitive code entry point in edi 
 
-  /* do atomic scode registration */
+  // do atomic scode registration 
   ret = scode_register(vcpu, scode_info, scode_pm, scode_en);
 
   return ret;
@@ -222,14 +234,15 @@ static u32 do_TV_HC_UNREG(VCPU *vcpu, struct regs *r)
 {
   u32 scode_gva;
   u32 ret;
-  /* sensitive code as guest virtual address in ecx */
+  // sensitive code as guest virtual address in ecx 
   scode_gva = r->ecx;
 
-  /* do atomic scode unregistration */
+  // do atomic scode unregistration 
   ret = scode_unregister(vcpu, scode_gva);
 
   return ret;
 }
+#endif
 
 //XUM
 
@@ -253,7 +266,7 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 
 }
 
-
+#ifdef __UTPM__
 static u32 do_TV_HC_UTPM_SEAL_DEPRECATED(VCPU *vcpu, struct regs *r)
 {
   struct inbuf_s plainbuf_s;
@@ -385,10 +398,10 @@ static u32 do_TV_HC_UTPM_QUOTE(VCPU *vcpu, struct regs *r)
 
   eu_trace("TV_HC_UTPM_QUOTE hypercall received.");
         
-  nonce_gva = r->esi; /* address of nonce to be sealed */
-  tpmsel_gva = r->ecx; /* tpm selection data address */
-  pcr_comp_buf_s_gva = r->edi; /* PCR Composite buffer and its length */
-  sigbuf_s_gva = r->edx; /* signature buffer and its length */
+  nonce_gva = r->esi; // address of nonce to be sealed 
+  tpmsel_gva = r->ecx; // tpm selection data address 
+  pcr_comp_buf_s_gva = r->edi; // PCR Composite buffer and its length 
+  sigbuf_s_gva = r->edx; // signature buffer and its length 
 
   EU_CHKN( copy_from_current_guest( vcpu,
                                     &sigbuf_s,
@@ -430,8 +443,8 @@ static u32 do_TV_HC_UTPM_QUOTE_DEPRECATED(VCPU *vcpu, struct regs *r)
   gva_t nonce_gva, tpmsel_gva;
   u32 ret = 1;
 
-  nonce_gva = r->esi; /* address of nonce to be sealed */
-  tpmsel_gva = r->ecx; /* tpm selection data address */
+  nonce_gva = r->esi; // address of nonce to be sealed 
+  tpmsel_gva = r->ecx; // tpm selection data address 
   sigbuf_s_gva = r->edx;
 
   EU_CHKN( copy_from_current_guest( vcpu,
@@ -520,6 +533,7 @@ static u32 do_TV_HC_TPMNVRAM_WRITEALL(VCPU *vcpu, struct regs *r)
   ret = hc_tpmnvram_writeall(vcpu, in_addr);
   return ret;
 }
+#endif
 
 u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
 {	
@@ -548,8 +562,14 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
 
   switch (cmd) {
     HANDLE( TV_HC_TEST );
+    // XUM: PAL registration-related code
+#ifdef __PAL__
     HANDLE( TV_HC_REG );
     HANDLE( TV_HC_UNREG );
+    HANDLE( TV_HC_SHARE );
+#endif
+    //XUM: micro-TPM related code
+#ifdef __UTPM__
     HANDLE( TV_HC_UTPM_SEAL_DEPRECATED );
     HANDLE( TV_HC_UTPM_UNSEAL );
     HANDLE( TV_HC_UTPM_SEAL );
@@ -557,13 +577,13 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
     HANDLE( TV_HC_UTPM_QUOTE );
     HANDLE( TV_HC_UTPM_ID_GETPUB );
     HANDLE( TV_HC_UTPM_QUOTE_DEPRECATED );
-    HANDLE( TV_HC_SHARE );
     HANDLE( TV_HC_UTPM_PCRREAD );
     HANDLE( TV_HC_UTPM_PCREXT );
     HANDLE( TV_HC_UTPM_GENRAND );
     HANDLE( TV_HC_TPMNVRAM_GETSIZE );
     HANDLE( TV_HC_TPMNVRAM_READALL );
     HANDLE( TV_HC_TPMNVRAM_WRITEALL );
+#endif
     //XUM: handle vcpu locking/unlocking
     HANDLE( TV_HC_VCPU_LOCK);
     HANDLE( TV_HC_VCPU_UNLOCK);
@@ -607,6 +627,7 @@ u32 tv_app_handleintercept_hwpgtblviolation(VCPU *vcpu,
 //  xmhf_smpguest_quiesce(vcpu);
 //#endif
 
+#ifdef	__PAL__
 #if !defined(__LDN_TV_INTEGRATION__)  
   eu_trace("CPU(0x%02x): gva=%#llx, gpa=%#llx, code=%#llx", (int)vcpu->id,
           gva, gpa, violationcode);
@@ -617,6 +638,14 @@ u32 tv_app_handleintercept_hwpgtblviolation(VCPU *vcpu,
 #else
 	ret = hpt_scode_npf(vcpu, gpa, violationcode);
 #endif //__LDN_TV_INTEGRATION__
+#else
+  (void)vcpu;
+  (void)r;
+  (void)gpa;
+  (void)gva;
+  (void)violationcode;
+  ret = 0;
+#endif
 
 //#ifdef __MP_VERSION__
 //  xmhf_smpguest_endquiesce(vcpu);

@@ -54,7 +54,7 @@
 
 #include <stdbool.h>
 
-#include <tv_utpm.h>
+//#include <tv_utpm.h>
 #include <nist_ctr_drbg.h>
 #include <random.h> 
 
@@ -154,6 +154,7 @@ static int master_prng_init(void) {
  */
 #define QND_BRIDGE_PUBKEY_PCR     19
 
+#ifdef __UTPM__
 static int trustvisor_measure_qnd_bridge_signing_pubkey( void ) {
   int rv=1;
   uint32_t serial_pubkey_len=0;
@@ -281,6 +282,7 @@ static int trustvisor_long_term_secret_init(void) {
 
   return rv;
 }
+#endif
 
 /* returns 0 on success. */
 /* TODO: take ciphertext input, e.g., from a multiboot_t */
@@ -305,6 +307,7 @@ int trustvisor_master_crypto_init(void) {
 		
   eu_trace( "AES-256 CTR_DRBG PRNG successfully seeded with TPM RNG.");
         
+#ifdef __UTPM__
   /* NV space used to support Micro-TPM Long-Term sealing */
   EU_CHKN( rv = trustvisor_long_term_secret_init());
 
@@ -326,6 +329,7 @@ int trustvisor_master_crypto_init(void) {
 
   eu_trace( "NvMuxPal anti-rollback NV Region: "
             "Access Controls validated successfully.");
+#endif
 		
   g_master_crypto_init_completed = true;
 

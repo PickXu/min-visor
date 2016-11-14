@@ -405,7 +405,6 @@ static void _vmx_handle_intercept_ioportaccess(VCPU *vcpu, struct regs *r){
 	return;
 }
 
-
 //---CR0 access handler-------------------------------------------------
 static void vmx_handle_intercept_cr0access_ug(VCPU *vcpu, struct regs *r, u32 gpr, u32 tofrom){
 	u32 cr0_value;

@@ -12,7 +12,7 @@ OBJECTS_PRECOMPILED += ./xmhf-tpm/arch/x86/tpm-x86.o
 OBJECTS_PRECOMPILED += ./xmhf-tpm/arch/x86/svm/tpm-x86svm.o 
 OBJECTS_PRECOMPILED += ./xmhf-tpm/arch/x86/vmx/tpm-x86vmx.o 
 
-
+# XUM: Deprecate memory protection
 OBJECTS_PRECOMPILED += ./xmhf-memprot/memp-interface.o
 OBJECTS_PRECOMPILED += ./xmhf-memprot/arch/x86/memp-x86.o
 OBJECTS_PRECOMPILED += ./xmhf-memprot/arch/x86/vmx/memp-x86vmx.o
@@ -32,6 +32,7 @@ OBJECTS_PRECOMPILED += ./xmhf-smpguest/arch/x86/svm/smpg-x86svm-data.o
 OBJECTS_PRECOMPILED += ./xmhf-smpguest/arch/x86/vmx/smpg-x86vmx.o
 OBJECTS_PRECOMPILED += ./xmhf-smpguest/arch/x86/vmx/smpg-x86vmx-data.o
 
+# XUM: Deprecate dmap protection
 OBJECTS_PRECOMPILED += ./xmhf-dmaprot/dmap-interface.o
 OBJECTS_PRECOMPILED += ./xmhf-dmaprot/arch/x86/dmap-x86.o
 OBJECTS_PRECOMPILED += ./xmhf-dmaprot/arch/x86/svm/dmap-x86svm.o
@@ -65,7 +66,7 @@ OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/vmx/bplt-x86vmx-vmcs.o
 OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/vmx/bplt-x86vmx-mtrrs.o
 OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/vmx/bplt-x86vmx-reboot.o
 
-
+# XUM: Deprecate SVM components
 OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/svm/bplt-x86svm.o
 OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/svm/bplt-x86svm-data.o
 OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/svm/bplt-x86svm-smp.o
@@ -73,6 +74,7 @@ OBJECTS_PRECOMPILED += ./xmhf-baseplatform/arch/x86/svm/bplt-x86svm-smp.o
 
 OBJECTS_PRECOMPILED += ./xmhf-partition/part-interface.o
 OBJECTS_PRECOMPILED += ./xmhf-partition/arch/x86/part-x86.o
+# XUM: Deprecate SVM components
 OBJECTS_PRECOMPILED += ./xmhf-partition/arch/x86/svm/part-x86svm.o
 OBJECTS_PRECOMPILED += ./xmhf-partition/arch/x86/svm/part-x86svm-sup.o
 OBJECTS_PRECOMPILED += ./xmhf-partition/arch/x86/vmx/part-x86vmx.o

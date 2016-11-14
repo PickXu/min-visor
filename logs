@@ -1,0 +1,5 @@
+Nov. 11, 2016
+1. Disable the interrupt flags of the guest OS to lock one VCPU for the sensitive application;
+
+Nov. 12, 2016
+1. Look into IPI
