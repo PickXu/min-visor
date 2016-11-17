@@ -152,8 +152,10 @@ void xmhf_runtime_main(VCPU *vcpu, u32 isEarlyInit){
   //setup guest OS state for partition
   xmhf_partition_setupguestOSstate(vcpu);
 
+#ifdef __MEMPROT__
   //initialize memory protection for this core
   xmhf_memprot_initialize(vcpu);
+#endif
 
   //initialize application parameter block and call app main
   {

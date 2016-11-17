@@ -21,30 +21,30 @@ export NESTED_PAGING := y
 export HYPOUTDIR = $(CURDIR)
 
 # libtommath
-export LIBTOMMATH_SRC := $(realpath ./xmhf/third-party/libtommath)
-LIBTOMMATH_BUILD = $(CURDIR)/_build_libtommath
-LIBTOMMATH_ARCHIVE = libtommath.a
+#export LIBTOMMATH_SRC := $(realpath ./xmhf/third-party/libtommath)
+#LIBTOMMATH_BUILD = $(CURDIR)/_build_libtommath
+#LIBTOMMATH_ARCHIVE = libtommath.a
 
 # libtomcrypt
-export LIBTOMCRYPT_SRC := $(realpath ./xmhf/third-party/libtomcrypt)
-LIBTOMCRYPT_BUILD = $(CURDIR)/_build_libtomcrypt
-LIBTOMCRYPT_ARCHIVE = libtomcrypt.a
+#export LIBTOMCRYPT_SRC := $(realpath ./xmhf/third-party/libtomcrypt)
+#LIBTOMCRYPT_BUILD = $(CURDIR)/_build_libtomcrypt
+#LIBTOMCRYPT_ARCHIVE = libtomcrypt.a
 
 # libbaremetal "source" location, currently hard-coded
 # TODO: specify via configure
 # LIBBAREMETAL_SRC = $(CURDIR)/libbaremetal
-export LIBBAREMETAL_SRC := $(realpath ./xmhf/src/libbaremetal)
+#export LIBBAREMETAL_SRC := $(realpath ./xmhf/src/libbaremetal)
 
 # libbaremetal archive
 # TODO: specify via configure
-LIBBAREMETAL_ARCHIVE = libbaremetal.a
+#LIBBAREMETAL_ARCHIVE = libbaremetal.a
 
 # libbaremetal includes
-LIBBAREMETAL_SUBLIBS = $(wildcard $(LIBBAREMETAL_SRC)/lib*)
-LIBBAREMETAL_INC = $(foreach dir,$(LIBBAREMETAL_SUBLIBS),-I$(dir)/include)
+#LIBBAREMETAL_SUBLIBS = $(wildcard $(LIBBAREMETAL_SRC)/lib*)
+#LIBBAREMETAL_INC = $(foreach dir,$(LIBBAREMETAL_SUBLIBS),-I$(dir)/include)
 
 # libbaremetal build directory 
-LIBBAREMETAL_BUILD = $(CURDIR)/_build_libbaremetal
+#LIBBAREMETAL_BUILD = $(CURDIR)/_build_libbaremetal
 
 export ADDL_LIBS :=
 export ADDL_INCLUDES :=
@@ -58,17 +58,17 @@ export builddir=.
 
 export APP_ARCHIVE := $(APP_ROOT)/xmhfhypapp.a
 
-ADDL_LIBS += $(LIBBAREMETAL_BUILD)/_objects/$(LIBBAREMETAL_ARCHIVE)
+#ADDL_LIBS += $(LIBBAREMETAL_BUILD)/_objects/$(LIBBAREMETAL_ARCHIVE)
 ADDL_INCLUDES += -I$(EMHF_INCLUDE) $(LIBBAREMETAL_INC)
 
-ADDL_LIBS += $(LIBTOMCRYPT_BUILD)/$(LIBTOMCRYPT_ARCHIVE)
-ADDL_INCLUDES += -I$(LIBTOMCRYPT_SRC)/src/headers/
+#ADDL_LIBS += $(LIBTOMCRYPT_BUILD)/$(LIBTOMCRYPT_ARCHIVE)
+#ADDL_INCLUDES += -I$(LIBTOMCRYPT_SRC)/src/headers/
 
-ADDL_LIBS += $(LIBTOMMATH_BUILD)/$(LIBTOMMATH_ARCHIVE)
-ADDL_INCLUDES += -I$(LIBTOMMATH_SRC)
+#ADDL_LIBS += $(LIBTOMMATH_BUILD)/$(LIBTOMMATH_ARCHIVE)
+#ADDL_INCLUDES += -I$(LIBTOMMATH_SRC)
 
 # link libbaremetal *again* to resolve more dependencies
-ADDL_LIBS += $(LIBBAREMETAL_BUILD)/_objects/$(LIBBAREMETAL_ARCHIVE)
+#ADDL_LIBS += $(LIBBAREMETAL_BUILD)/_objects/$(LIBBAREMETAL_ARCHIVE)
 
 ##################################################################################
 ### BEGIN Variables controlled using autoconf
@@ -244,24 +244,24 @@ subdirs: $(LIBBAREMETAL_SRC)
 	@echo ---------------------------------------------------------------
 	@echo Building libtommath...
 	@echo ---------------------------------------------------------------
-	mkdir -p $(LIBTOMMATH_BUILD)
-	cd $(LIBTOMMATH_BUILD) && $(MAKE) -f $(LIBTOMMATH_SRC)/makefile CFLAGS="$(filter-out -Werror,$(CFLAGS))" -w libtommath.a
+	#mkdir -p $(LIBTOMMATH_BUILD)
+	#cd $(LIBTOMMATH_BUILD) && $(MAKE) -f $(LIBTOMMATH_SRC)/makefile CFLAGS="$(filter-out -Werror,$(CFLAGS))" -w libtommath.a
 	@echo ---------------------------------------------------------------
 	@echo libtommath.a build SUCCESS
 	@echo ---------------------------------------------------------------
 	@echo ---------------------------------------------------------------
 	@echo Building libtomcrypt...
 	@echo ---------------------------------------------------------------
-	mkdir -p $(LIBTOMCRYPT_BUILD)
-	cd $(LIBTOMCRYPT_BUILD) && $(MAKE) -f $(LIBTOMCRYPT_SRC)/makefile CFLAGS="$(filter-out -Werror,$(CFLAGS)) -DLTC_SOURCE" -w libtomcrypt.a
+	#mkdir -p $(LIBTOMCRYPT_BUILD)
+	#cd $(LIBTOMCRYPT_BUILD) && $(MAKE) -f $(LIBTOMCRYPT_SRC)/makefile CFLAGS="$(filter-out -Werror,$(CFLAGS)) -DLTC_SOURCE" -w libtomcrypt.a
 	@echo ---------------------------------------------------------------
 	@echo libtomcrypt.a build SUCCESS
 	@echo ---------------------------------------------------------------
 	@echo ---------------------------------------------------------------
 	@echo Building libbaremetal...
 	@echo ---------------------------------------------------------------
-	mkdir -p $(LIBBAREMETAL_BUILD)
-	cd $(LIBBAREMETAL_BUILD) && $(MAKE) -f $(LIBBAREMETAL_SRC)/Makefile -w all
+	#mkdir -p $(LIBBAREMETAL_BUILD)
+	#cd $(LIBBAREMETAL_BUILD) && $(MAKE) -f $(LIBBAREMETAL_SRC)/Makefile -w all
 	@echo ---------------------------------------------------------------
 	@echo libbaremetal.a build SUCCESS
 	@echo ---------------------------------------------------------------
@@ -309,17 +309,17 @@ clean:
 	@echo ---------------------------------------------------------------
 	@echo Cleaning libbaremetal...
 	@echo ---------------------------------------------------------------
-	mkdir -p $(LIBBAREMETAL_BUILD)
-	cd $(LIBBAREMETAL_BUILD) && $(MAKE) -f $(LIBBAREMETAL_SRC)/Makefile -w clean
-	rm -rf $(LIBBAREMETAL_BUILD)
+	#mkdir -p $(LIBBAREMETAL_BUILD)
+	#cd $(LIBBAREMETAL_BUILD) && $(MAKE) -f $(LIBBAREMETAL_SRC)/Makefile -w clean
+	#rm -rf $(LIBBAREMETAL_BUILD)
 	@echo ---------------------------------------------------------------
 	@echo libbaremetal.a clean SUCCESS
 	@echo ---------------------------------------------------------------
 	@echo ---------------------------------------------------------------
 	@echo Cleaning libtommath and libtomcrypt...
 	@echo ---------------------------------------------------------------
-	rm -rf $(LIBTOMMATH_BUILD)
-	rm -rf $(LIBTOMCRYPT_BUILD)
+	#rm -rf $(LIBTOMMATH_BUILD)
+	#rm -rf $(LIBTOMCRYPT_BUILD)
 	@echo ---------------------------------------------------------------
 	@echo libtommath and libtomcrypt clean SUCCESS...
 	@echo ---------------------------------------------------------------
