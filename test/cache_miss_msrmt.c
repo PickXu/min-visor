@@ -47,18 +47,23 @@ uint16_t events[] = {0x0203,0x0803,0x0105,0x0205,0x0107,0x8108,0x8208,0x8408,0x8
 
 int main(int argc, char** argv) {
 
-	int eax, ebx, ecx, edx,eax1,eax2,eax3,eax4,eax5,eax6,edx1,edx2,edx3,edx4,edx5,edx6;
-	int ret,i,j;
+	int eax, ebx, ecx, edx,eax1,eax2,eax3,eax4,eax5,eax6,eax7,eax8,edx1,edx2,edx3,edx4,edx5,edx6,edx7,edx8;
+	int ret,i,j,l;
+#ifdef __MULTITHREADS__
         pid_t pid;
 	pid_t children[NUM_THREDS];
+#endif
 	uint64_t start, end;
 	unsigned cycles_low, cycles_high, cycles_low1, cycles_high1;
+	int events_num = sizeof(events)/sizeof(uint16_t);
 
 #ifdef __NON_PREEMPT__
 	printf("Non-preemptable mode.\n");
 #else
 	printf("Conventional mode.\n");
 #endif
+
+#ifdef __MULTITHREADS__
         // Start NUM_THREDS competing processes
 	for(i=0;i<NUM_THREDS;i++)
 	{
@@ -72,26 +77,33 @@ int main(int argc, char** argv) {
 	} else {
 	for(i=0;i<NUM_THREDS;i++)
 		printf("Forked Process: %d\n", children[i]);
+#endif
 	printf("Entering testing section...\n");
 
-
+	for(l=0;l<events_num;l+=4){
 	// Init IA32_PERFEVTSELx to count specific events 
 	eax = 26;
 	ebx = 0;	//IA32_PERFEVTSEL(0+ebx);IA32_PMC(0+ebx)
-	ecx = DTLB_MISS;
+	ecx = events[l];
 	asm volatile ("vmcall\n"
 			:
 			: "a" (eax), "b" (ebx), "c" (ecx)
 			);
 	
 	ebx = 1;	//IA32_PERFEVTSEL(0+ebx);IA32_PMC(0+ebx)
-	ecx = LLC_MISS;
+	ecx = events[l+1];
 	asm volatile ("vmcall\n"
 			:
 			: "a" (eax), "b" (ebx), "c" (ecx)
 			);
 	ebx = 2;
-	ecx = ITLB_MISS;
+	ecx = events[l+2];
+	asm volatile ("vmcall\n"
+			:
+			: "a" (eax), "b" (ebx), "c" (ecx)
+			);
+	ebx = 3;
+	ecx = events[l+3];
 	asm volatile ("vmcall\n"
 			:
 			: "a" (eax), "b" (ebx), "c" (ecx)
@@ -124,6 +136,10 @@ int main(int argc, char** argv) {
 			: "=a" (eax5), "=d" (edx5)
 			: "c" (2)
 			);
+	asm volatile("rdpmc\n"
+			: "=a" (eax7), "=d" (edx7)
+			: "c" (3)
+			);
 
 	asm volatile("rdpmc\n"
 			: "=a" (eax3), "=d" (edx3)
@@ -137,6 +153,11 @@ int main(int argc, char** argv) {
 			: "=a" (eax6), "=d" (edx6)
 			: "c" (2)
 			);
+	asm volatile("rdpmc\n"
+			: "=a" (eax8), "=d" (edx8)
+			: "c" (3)
+			);
+
 
 	//Load data to cache
 	for(i=0;i<BLOCK_SIZE;i++)
@@ -161,6 +182,10 @@ int main(int argc, char** argv) {
 	 asm volatile("rdpmc\n"
 			: "=a" (eax5), "=d" (edx5)
 			: "c" (2)
+			);
+	asm volatile("rdpmc\n"
+			: "=a" (eax7), "=d" (edx7)
+			: "c" (3)
 			);
 
 	
@@ -199,14 +224,19 @@ int main(int argc, char** argv) {
 			: "=a" (eax6), "=d" (edx6)
 			: "c" (2)
 			);
+	asm volatile("rdpmc\n"
+			: "=a" (eax8), "=d" (edx8)
+			: "c" (3)
+			);
 
 	start = (((uint64_t) cycles_high << 32)|cycles_low);
 	end = (((uint64_t) cycles_high1 << 32)|cycles_low1);
 
-	data[j*4] = (eax3-eax1);
-	data[j*4+1] = (eax4-eax2);
-	data[j*4+2] = (end-start)>>32;
-	data[j*4+3] = ((end-start)&0xffffffff);
+	data[j*5] = (eax3-eax1);
+	data[j*5+1] = (eax4-eax2);
+	data[j*5+2] = (eax6-eax5);
+	data[j*5+3] = (eax8-eax7);
+	data[j*5+4] = ((end-start)&0xffffffff);
 	}
 
 
@@ -214,7 +244,9 @@ int main(int argc, char** argv) {
 	assert((ret=unlock_core()) == 0);			
 #endif
 	for(j=0;j<ITERATIONS;j+=4)
-		printf("DTLB_MISS: %d, LLC_MISS: %d, Time: %u\n",data[j*4],data[j*4+1],data[j*4+3]);
+		printf("%04x: %d, %04x: %d, %04x: %d, %04x: %d, Time: %u\n",events[l],data[j*5],events[l+1],data[j*5+1],events[l+2],data[i*5+2],events[l+3],data[j*5+3],data[j*5+4]);
+
+	}
 #else
 	//Delegate the test to hypervisor
 	eax = 28;
@@ -224,10 +256,12 @@ int main(int argc, char** argv) {
 			: : "a" (eax), "b" (ebx), "c" (ecx));
 #endif
 
+#ifdef __MULTITHREADS__
 	// Kill Children
 	for (i=0;i<NUM_THREDS;i++)
 		kill(children[i],SIGKILL);
 	}
+#endif
 
 	return 0;
 }
