@@ -77,6 +77,9 @@ enum HCcmd {
   //XUM
   TV_HC_VCPU_LOCK = 24,
   TV_HC_VCPU_UNLOCK = 25,
+  TV_HC_INIT_PMC = 26,
+  TV_HC_RDPMC = 27,
+  TV_HC_RUN = 28,
   
   /* misc */
   TV_HC_TEST =255,

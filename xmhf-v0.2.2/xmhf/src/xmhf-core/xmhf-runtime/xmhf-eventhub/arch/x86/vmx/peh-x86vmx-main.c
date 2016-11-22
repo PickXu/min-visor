@@ -79,7 +79,6 @@ static u32 * _vmx_decode_reg(u32 gpr, VCPU *vcpu, struct regs *r){
 
 //---intercept handler (CPUID)--------------------------------------------------
 static void _vmx_handle_intercept_cpuid(VCPU *vcpu, struct regs *r){
-	//printf("\nCPU(0x%02x): CPUID", vcpu->id);
 	asm volatile ("cpuid\r\n"
           :"=a"(r->eax), "=b"(r->ebx), "=c"(r->ecx), "=d"(r->edx)
           :"a"(r->eax), "c" (r->ecx));

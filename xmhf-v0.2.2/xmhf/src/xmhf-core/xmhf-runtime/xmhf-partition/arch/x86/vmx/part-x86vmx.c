@@ -256,6 +256,8 @@ void vmx_initunrestrictedguestVMCS(VCPU *vcpu){
 	//setup host state
 	vcpu->vmcs.host_CR0 = read_cr0();
 	vcpu->vmcs.host_CR4 = read_cr4();
+	//XUM: enable RDPMC at PL 3
+	vcpu->vmcs.host_CR4 |= CR4_PCE;
 	vcpu->vmcs.host_CR3 = read_cr3();
 	vcpu->vmcs.host_CS_selector = read_segreg_cs();
 	vcpu->vmcs.host_DS_selector = read_segreg_ds();
@@ -352,6 +354,8 @@ void vmx_initunrestrictedguestVMCS(VCPU *vcpu){
 	vcpu->vmcs.guest_CR0 &= ~(CR0_PG);
 	//CR4, required bits set (usually VMX enabled bit)
 	vcpu->vmcs.guest_CR4 = vcpu->vmx_msrs[INDEX_IA32_VMX_CR4_FIXED0_MSR];
+	//XUM: Enable RDPMC at PL 3
+	vcpu->vmcs.guest_CR4 |= CR4_PCE;
 	//CR3 set to 0, does not matter
 	vcpu->vmcs.guest_CR3 = 0;
 	//IDTR

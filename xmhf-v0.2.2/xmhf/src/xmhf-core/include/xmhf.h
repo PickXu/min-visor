@@ -100,10 +100,10 @@ extern RPB *rpb;
 //----------------------------------------------------------------------
 // component headers
 #include <xmhf-baseplatform.h>	//XMHF base platform component
-#ifdef __MEMPROT__
+//#ifdef __MEMPROT__
 #include <xmhf-memprot.h>		//XMHF memory protection component
 #include <xmhf-dmaprot.h>		//XMHF DMA protection component
-#endif
+//#endif
 #include <xmhf-partition.h>		//XMHF partition component
 #include <xmhf-smpguest.h>		//XMHF SMP guest component
 #include <xmhf-parteventhub.h>	//XMHF partition event-hub component

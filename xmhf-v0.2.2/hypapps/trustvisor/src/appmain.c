@@ -266,6 +266,92 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 
 }
 
+static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
+{
+  int eax,ecx;//,edx;
+  printf("\nCPU%02x(%d): Init PMC on IA32_PERFEVTSEL%d with umask:event as %04x ...", vcpu->id, r->eax, r->ebx,(0xffff&r->ecx));
+  //Disable RDPMC AND RDTSC exiting
+  /*
+  asm volatile("rdmsr\n"
+		: "=a" (eax), "=d" (edx)
+		: "c" (IA32_VMX_PROCBASED_CTLS_MSR)
+		);
+  printf("\nHere.");
+  eax &= 0xe7ff;	//disable RDPMC and RDTSC exiting
+  asm volatile("xor %%edx, %%edx\n"
+	       "wrmsr\n"
+		: : "a" (eax), "c" (IA32_VMX_PROCBASED_CTLS_MSR));
+  */
+  vcpu->vmcs.control_VMX_cpu_based &= ~(1<<11|1<<12);
+
+  eax = 0x00430000 | (0xffff&r->ecx);
+  ecx = 0x186+r->ebx;
+  // Select the LLC Misses Event
+  asm volatile(	"xor %%edx,%%edx\n"
+		"wrmsr\n"
+		:
+		: "a" (eax), "c" (ecx)); 
+
+  return 0;
+}
+
+static u32 do_TV_HC_RDPMC(VCPU *vcpu, struct regs *r)
+{
+  int eax, edx;
+  printf("\nCPU%02x(%d): IA32_PMC at %08x...", vcpu->id, r->eax, r->ecx);
+  asm volatile("rdmsr\n"
+		: "=a" (eax), "=d" (edx)
+		: "c" (r->ecx)
+		);
+  printf("%08x:%08x", edx,eax);
+  
+  return 0;
+}
+
+static u32 do_TV_HC_RUN(VCPU *vcpu, struct regs *r) 
+{
+  uint8_t data[32768];
+  int ecx, eax1, edx1, eax2, edx2, eax3, edx3, eax4, edx4;
+  int i;
+  printf("\nCPU%02x(%d): Iterate over array of 32KB once...", vcpu->id, r->eax);
+
+  for(i=0;i<32768;i++)
+    data[i] = data[i]; 
+   
+  ecx = 0x0c1;
+  asm volatile("rdmsr\n"
+		: "=a" (eax1), "=d" (edx1)
+		: "c" (ecx)
+		);
+  ecx = 0x0c2;
+  asm volatile("rdmsr\n"
+		: "=a" (eax2), "=d" (edx2)
+		: "c" (ecx)
+		);
+
+  for(i=0;i<32768;i++)
+    data[i] = data[i]; 
+
+  ecx = 0x0c1;
+  asm volatile("rdmsr\n"
+		: "=a" (eax3), "=d" (edx3)
+		: "c" (ecx)
+		);
+  ecx = 0x0c2;
+  asm volatile("rdmsr\n"
+		: "=a" (eax4), "=d" (edx4)
+		: "c" (ecx)
+		);
+
+
+  printf("\n%08x:%08x",eax1,edx1);
+  printf("\n%08x:%08x",eax2,edx2);
+  printf("\n%08x:%08x",eax3,edx3);
+  printf("\n%08x:%08x",eax4,edx4);
+
+  return 0;
+}
+
 #ifdef __UTPM__
 static u32 do_TV_HC_UTPM_SEAL_DEPRECATED(VCPU *vcpu, struct regs *r)
 {
@@ -587,6 +673,9 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
     //XUM: handle vcpu locking/unlocking
     HANDLE( TV_HC_VCPU_LOCK);
     HANDLE( TV_HC_VCPU_UNLOCK);
+    HANDLE( TV_HC_INIT_PMC);
+    HANDLE( TV_HC_RDPMC);
+    HANDLE( TV_HC_RUN);
 
   default:
     {
