@@ -251,7 +251,14 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
   //u64 *timer_handler;
   printf("\nCPU%02x: VCPU_LOCK(%d) handler...",vcpu->id, r->eax); 
   
+  /* Disable IF and TF */
+  //vcpu->vmcs.guest_RFLAGS &= 0xfffffffffffffcff;
+
+  /* Disable IF only */
   vcpu->vmcs.guest_RFLAGS &= 0xfffffffffffffdff;
+
+  /* Disable NMI */
+  outb(inb(0x70)|0x80,0x70); 
   
   return 0;
 }
@@ -262,6 +269,7 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
   
   vcpu->vmcs.guest_RFLAGS |= 0x0000000000000200;
  
+  outb(inb(0x70)&0x7f,0x70); 
   return 0;
 
 }
@@ -270,27 +278,30 @@ static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
 {
   int eax,ecx;//,edx;
   printf("\nCPU%02x(%d): Init PMC on IA32_PERFEVTSEL%d with umask:event as %04x ...", vcpu->id, r->eax, r->ebx,(0xffff&r->ecx));
-  //Disable RDPMC AND RDTSC exiting
-  /*
-  asm volatile("rdmsr\n"
-		: "=a" (eax), "=d" (edx)
-		: "c" (IA32_VMX_PROCBASED_CTLS_MSR)
-		);
-  printf("\nHere.");
-  eax &= 0xe7ff;	//disable RDPMC and RDTSC exiting
-  asm volatile("xor %%edx, %%edx\n"
-	       "wrmsr\n"
-		: : "a" (eax), "c" (IA32_VMX_PROCBASED_CTLS_MSR));
-  */
   vcpu->vmcs.control_VMX_cpu_based &= ~(1<<11|1<<12);
 
-  eax = 0x00430000 | (0xffff&r->ecx);
+  if ((r->ecx&0x00ff) == 0xa3) {
+	/*
+	if ((r->ecx&0xff00) != 0x0500 && (r->ecx&0xff00) != 0x0600 && (r->ecx&0xff00) != 0x0c00) {
+		eax = 0x00630000 | (0xffff&r->ecx);
+	} else 
+	*/
+	if ((r->ecx&0xff00) == 0x0c00 || (r->ecx&0xff00) == 0x0600 || (r->ecx&0xff00) == 0x0500) {
+		eax = 0x00430000 | (0xffff&r->ecx) | ((0xff00&r->ecx)<<16);
+	} else {
+		eax = 0x00430000 | (0xffff&r->ecx);
+	}
+  } else {
+	eax = 0x00430000 | (0xffff&r->ecx);
+  }
   ecx = 0x186+r->ebx;
   // Select the LLC Misses Event
   asm volatile(	"xor %%edx,%%edx\n"
 		"wrmsr\n"
 		:
 		: "a" (eax), "c" (ecx)); 
+
+   printf("Guest CR3: 0x%x, Host CR3: 0x%x\n", vcpu->vmcs.guest_CR3, vcpu->vmcs.host_CR3);
 
   return 0;
 }
