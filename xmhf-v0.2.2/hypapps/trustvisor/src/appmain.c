@@ -67,6 +67,7 @@
 
 #define IA32_PQR_ASSOC 0x0c8f
 #define IA32_L3_MASK_0 0x0c90
+#define CAT_ENABLED
 
 const cmdline_option_t gc_trustvisor_available_cmdline_options[] = {
   { "nvpalpcr0", "0000000000000000000000000000000000000000"}, /* Req'd PCR[0] of NvMuxPal */
@@ -252,28 +253,36 @@ static u32 do_TV_HC_UNREG(VCPU *vcpu, struct regs *r)
 static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
   //configure CBMs for all CLOSes
   //CLOS[0-14] occupy 0-6MB, CLOS[15] occupies 6-8MB
-  int i,eax,ecx,edx;
+  uint32_t i;
+  uint64_t msr_val=0;
+  printf("\nCPU%02x: CAT INIT(%d) handler...",vcpu->id, r->eax); 
   for(i=0;i<15;i++){
     asm volatile("rdmsr\n"
-		: :"a"(eax), "d"(edx),"c"(IA32_L3_MASK_0+i)
-		: "eax", "edx","ecx" );
+		:"=A"(msr_val)
+		: "c"(IA32_L3_MASK_0+i)
+		);
+    msr_val = ((msr_val|0xfffff)&0xfffffffffffffff0);
     asm volatile("wrmsr\n"
-	 	: : "a" ((eax|0xfffff)&0xfffffff0),"d"(edx),"c"(IA32_L3_MASK_0+i)
-		: "eax", "ecx", "edx");
+	 	: : "A" (msr_val),"c"(IA32_L3_MASK_0+i)
+		);
   }
 
   asm volatile("rdmsr\n"
-                : :"a"(eax), "d"(edx),"c"(IA32_L3_MASK_0+15)
-                : "eax", "edx","ecx" );
+                : "=A"(msr_val)
+		: "c"(IA32_L3_MASK_0+15)
+                );
+  msr_val = (msr_val&0xfffffffffff0000f);
     asm volatile("wrmsr\n"
-                : : "a" (eax&0xfff0000f),"d"(edx),"c"(IA32_L3_MASK_0+15)
-		: "eax", "edx", "ecx");
+                : : "A" (msr_val),"c"(IA32_L3_MASK_0+15)
+		);
+  return 0;
 }
 #endif
 
 static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 {
-  int i, eax,edx,ecx;
+  uint32_t i, ecx=0;
+  uint64_t msr_val=0;
   //u64 *timer_handler;
   printf("\nCPU%02x: VCPU_LOCK(%d) handler...",vcpu->id, r->eax); 
   
@@ -290,12 +299,13 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 	//enter CLOS[15]
 	ecx = IA32_PQR_ASSOC;
 	asm volatile("rdmsr\n"
-			: : "a"(eax), "d"(edx),"c"(ecx)
-			: "eax", "edx", "ecx");
-	edx = (edx|0xf);
+			: "=A"(msr_val)
+			: "c"(ecx)
+			);
+	msr_val = (msr_val|((uint64_t)0xf<<32));
 	asm volatile("wrmsr\n"
-			: : "a"(eax), "d"(edx), "c"(ecx)
-			: "eax", "edx", "ecx");	
+			: : "A"(msr_val), "c"(ecx)
+			);	
 
 	//cflush target data range
 	//, which is defined by r->ebx and r->ecx
@@ -312,27 +322,31 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 
 static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 {
-  int eax,edx,ecx;
+  uint32_t ecx=0;
+  uint64_t msr_val=0;
   printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
-  
-  vcpu->vmcs.guest_RFLAGS |= 0x0000000000000200;
- 
-  outb(inb(0x70)&0x7f,0x70); 
-#ifdef CAT_ENABLED
-	//cflush target data range
 
+#ifdef CAT_ENABLED
+	//TODO: cflush target data range
+	
 	//enter CLOS[0]
 	ecx = IA32_PQR_ASSOC;
 	asm volatile("rdmsr\n"
-			: : "a"(eax), "d"(edx),"c"(ecx)
-			: "eax", "edx", "ecx");
-	edx = (edx&0xfffffff0);
+			: "=A"(msr_val)
+			: "c"(ecx)
+			);
+	msr_val = (msr_val&0xfffffff0ffffffff);
 	asm volatile("wrmsr\n"
-			: : "a"(eax), "d"(edx), "c"(ecx)
-			: "eax", "edx", "ecx");	
+			: : "A"(msr_val), "c"(ecx)
+			);	
 #endif
+ 
+  vcpu->vmcs.guest_RFLAGS |= 0x0000000000000200;
+ 
+  outb(inb(0x70)&0x7f,0x70); 
 
   return 0;
+}
 
 
 
@@ -744,6 +758,7 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
     HANDLE( TV_HC_TPMNVRAM_WRITEALL );
 #endif
     //XUM: handle vcpu locking/unlocking
+    HANDLE( TV_HC_CAT_INIT);
     HANDLE( TV_HC_VCPU_LOCK);
     HANDLE( TV_HC_VCPU_UNLOCK);
     HANDLE( TV_HC_INIT_PMC);
