@@ -65,6 +65,9 @@
 #include <tv_emhf.h>
 #include <cmdline.h>
 
+#define IA32_PQR_ASSOC 0x0c8f
+#define IA32_L3_MASK_0 0x0c90
+
 const cmdline_option_t gc_trustvisor_available_cmdline_options[] = {
   { "nvpalpcr0", "0000000000000000000000000000000000000000"}, /* Req'd PCR[0] of NvMuxPal */
   { "nvenforce", "true" }, /* true|false - actually enforce nvpalpcr0? */
@@ -245,9 +248,32 @@ static u32 do_TV_HC_UNREG(VCPU *vcpu, struct regs *r)
 #endif
 
 //XUM
+#ifdef CAT_ENABLED
+static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
+  //configure CBMs for all CLOSes
+  //CLOS[0-14] occupy 0-6MB, CLOS[15] occupies 6-8MB
+  int i,eax,ecx,edx;
+  for(i=0;i<15;i++){
+    asm volatile("rdmsr\n"
+		: :"a"(eax), "d"(edx),"c"(IA32_L3_MASK_0+i)
+		: "eax", "edx","ecx" );
+    asm volatile("wrmsr\n"
+	 	: : "a" ((eax|0xfffff)&0xfffffff0),"d"(edx),"c"(IA32_L3_MASK_0+i)
+		: "eax", "ecx", "edx");
+  }
+
+  asm volatile("rdmsr\n"
+                : :"a"(eax), "d"(edx),"c"(IA32_L3_MASK_0+15)
+                : "eax", "edx","ecx" );
+    asm volatile("wrmsr\n"
+                : : "a" (eax&0xfff0000f),"d"(edx),"c"(IA32_L3_MASK_0+15)
+		: "eax", "edx", "ecx");
+}
+#endif
 
 static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 {
+  int i, eax,edx,ecx;
   //u64 *timer_handler;
   printf("\nCPU%02x: VCPU_LOCK(%d) handler...",vcpu->id, r->eax); 
   
@@ -259,20 +285,56 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 
   /* Disable NMI */
   outb(inb(0x70)|0x80,0x70); 
+
+#ifdef CAT_ENABLED
+	//enter CLOS[15]
+	ecx = IA32_PQR_ASSOC;
+	asm volatile("rdmsr\n"
+			: : "a"(eax), "d"(edx),"c"(ecx)
+			: "eax", "edx", "ecx");
+	edx = (edx|0xf);
+	asm volatile("wrmsr\n"
+			: : "a"(eax), "d"(edx), "c"(ecx)
+			: "eax", "edx", "ecx");	
+
+	//cflush target data range
+	//, which is defined by r->ebx and r->ecx
+	asm volatile("mfence\n");
+	for(i=r->ebx;i<r->ecx;i+=64){
+	    asm volatile("clflush %0\n"
+			: "+m" ((void*)i));
+	}
+
+#endif
   
   return 0;
 }
 
 static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 {
+  int eax,edx,ecx;
   printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
   
   vcpu->vmcs.guest_RFLAGS |= 0x0000000000000200;
  
   outb(inb(0x70)&0x7f,0x70); 
+#ifdef CAT_ENABLED
+	//cflush target data range
+
+	//enter CLOS[0]
+	ecx = IA32_PQR_ASSOC;
+	asm volatile("rdmsr\n"
+			: : "a"(eax), "d"(edx),"c"(ecx)
+			: "eax", "edx", "ecx");
+	edx = (edx&0xfffffff0);
+	asm volatile("wrmsr\n"
+			: : "a"(eax), "d"(edx), "c"(ecx)
+			: "eax", "edx", "ecx");	
+#endif
+
   return 0;
 
-}
+
 
 static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
 {
