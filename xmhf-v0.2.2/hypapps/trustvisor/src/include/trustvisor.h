@@ -80,6 +80,7 @@ enum HCcmd {
   TV_HC_INIT_PMC = 26,
   TV_HC_RDPMC = 27,
   TV_HC_RUN = 28,
+  TV_HC_CAT_INIT = 29,
   
   /* misc */
   TV_HC_TEST =255,

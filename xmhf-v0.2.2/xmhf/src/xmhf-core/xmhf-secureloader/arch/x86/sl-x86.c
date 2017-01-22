@@ -54,11 +54,12 @@
 
 
 //we only have confidence in the runtime's expected value here in the SL
-//static INTEGRITY_MEASUREMENT_VALUES g_sl_gold /* __attribute__(( section("") )) */ = {
-//    .sha_runtime = ___RUNTIME_INTEGRITY_HASH___,
-//    .sha_slabove64K = BAD_INTEGRITY_HASH,
-//    .sha_slbelow64K = BAD_INTEGRITY_HASH
-//};
+// XUM: enable TPM
+static INTEGRITY_MEASUREMENT_VALUES g_sl_gold  __attribute__(( section(".data") ))  = {
+    .sha_runtime = ___RUNTIME_INTEGRITY_HASH___,
+    .sha_slabove64K = BAD_INTEGRITY_HASH,
+    .sha_slbelow64K = BAD_INTEGRITY_HASH
+};
 
 
 #ifndef __XMHF_VERIFICATION__
@@ -118,7 +119,8 @@ u32 xmhf_sl_arch_x86_setup_runtime_paging(RPB *rpb, u32 runtime_spa, u32 runtime
  * (i.e., measurements match expectations), and integrity-check the
  * runtime. */
 /* Note: calling this *before* paging is enabled is important. */
-/*bool xmhf_sl_arch_integrity_check(u8* runtime_base_addr, size_t runtime_len) {
+// XUM: enable TPM 
+bool xmhf_sl_arch_integrity_check(u8* runtime_base_addr, size_t runtime_len) {
     int ret;
     u32 locality = EMHF_TPM_LOCALITY_PREF; 
     tpm_pcr_value_t pcr17, pcr18;    
@@ -152,7 +154,6 @@ u32 xmhf_sl_arch_x86_setup_runtime_paging(RPB *rpb, u32 runtime_spa, u32 runtime
     
     return true;    
 }
-*/
 
 
 
