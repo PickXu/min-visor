@@ -58,7 +58,7 @@
 
 #include <trustvisor.h>
 #include <crypto_init.h>
-#include <tv_utpm.h> /* formerly utpm.h */
+//#include <tv_utpm.h> /* formerly utpm.h */
 
 #include <perf.h>	
 
@@ -133,7 +133,7 @@ typedef struct whitelist_entry{
 //#endif
 
   /* Micro-TPM related */
-  utpm_master_state_t utpm;
+  //utpm_master_state_t utpm;
 
   /* pal page tables */
   pagelist_t *gpl;

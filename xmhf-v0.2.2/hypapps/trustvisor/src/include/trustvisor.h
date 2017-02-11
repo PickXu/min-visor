@@ -48,6 +48,17 @@
 #define TRUSTVISOR_H
 
 /*
+ * Hypercall LockCore Argument
+ */
+typedef struct {
+    uint32_t num;
+    uint32_t addr[4];
+    uint32_t no[4];
+    uint32_t usize[4];
+    uint32_t skip[4];
+} hc_args;
+
+/*
  * Hyper-Call constants
  */
 enum HCcmd {

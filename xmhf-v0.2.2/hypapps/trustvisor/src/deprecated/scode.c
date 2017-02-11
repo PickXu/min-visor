@@ -55,7 +55,7 @@
 
 #include <scode.h>
 #include <malloc.h>
-//#include <tv_utpm.h> /* formerly utpm.h */
+#include <tv_utpm.h> /* formerly utpm.h */
 #include <random.h>
 #include <crypto_init.h>
 
@@ -214,7 +214,6 @@ static whitelist_entry_t* find_scode_by_entry(u64 gcr3, u32 gv_entry)
   return NULL;
 }
 
-#ifdef __TPM__
 int scode_measure_section(utpm_master_state_t *utpm,
                           whitelist_entry_t *wle,
                           const tv_pal_section_int_t *section)
@@ -304,8 +303,6 @@ int scode_measure_sections(utpm_master_state_t *utpm,
   return 0;
 }
 
-#endif
-
 
 /* initialize all the scode related variables and buffers */
 void init_scode(VCPU * vcpu)
@@ -352,7 +349,7 @@ void init_scode(VCPU * vcpu)
   memset(scode_curr, 0xFF, ((max+1) * sizeof(*scode_curr)));
 
   /* init PRNG and long-term crypto keys */
-  // XUM: disable TPM bootstrapping at this point
+  // xum: disable TPM bootstrapping at this point
   /*
   EU_VERIFYN(trustvisor_master_crypto_init());
   eu_trace("trustvisor_master_crypto_init successful.");
@@ -656,13 +653,11 @@ u32 scode_register(VCPU *vcpu, u32 scode_info, u32 scode_pm, u32 gventry)
   /* flush TLB for page table modifications to take effect */
   xmhf_memprot_flushmappings(vcpu);
 
-#ifdef __TPM__
   /* initialize Micro-TPM instance */
   utpm_init_instance(&whitelist_new.utpm);
 
   /* extent uTPM PCR[0] with with hash of each section metadata and contents */
   EU_CHKN( scode_measure_sections(&whitelist_new.utpm, &whitelist_new));
-#endif
 
 #ifdef __MP_VERSION__
   /* initialize PAL running lock */

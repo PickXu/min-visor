@@ -64,10 +64,13 @@
 #include <tv_log.h>
 #include <tv_emhf.h>
 #include <cmdline.h>
+#include <hpt.h>
+#include <hptw.h>
+#include <hptw_emhf.h>
 
-#define IA32_PQR_ASSOC 0x0c8f
-#define IA32_L3_MASK_0 0x0c90
-#define CAT_ENABLED
+//#define IA32_PQR_ASSOC 0x0c8f
+//#define IA32_L3_MASK_0 0x0c90
+//#define CAT_ENABLED
 
 const cmdline_option_t gc_trustvisor_available_cmdline_options[] = {
   { "nvpalpcr0", "0000000000000000000000000000000000000000"}, /* Req'd PCR[0] of NvMuxPal */
@@ -281,10 +284,14 @@ static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
 
 static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 {
-  uint32_t i, ecx=0;
-  uint64_t msr_val=0;
-  //u64 *timer_handler;
-  printf("\nCPU%02x: VCPU_LOCK(%d) handler...",vcpu->id, r->eax); 
+  hptw_emhf_checked_guest_ctx_t ctx;
+  uint32_t cur,rest,len;
+  u32 j,k,i;
+  void* addr;
+  hc_args args;
+  uint32_t cycles_high,cycles_low,cycles_high1,cycles_low1;
+  uint64_t total_time=0;
+  //printf("\nCPU%02x: VCPU_LOCK(%d) handler: HC_ARGS at %p\n",vcpu->id, r->eax,(void*)r->ebx); 
   
   /* Disable IF and TF */
   //vcpu->vmcs.guest_RFLAGS &= 0xfffffffffffffcff;
@@ -296,6 +303,8 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
   outb(inb(0x70)|0x80,0x70); 
 
 #ifdef CAT_ENABLED
+  	uint64_t msr_val=0;
+	uint32_t ecx=0;
 	//enter CLOS[15]
 	ecx = IA32_PQR_ASSOC;
 	asm volatile("rdmsr\n"
@@ -307,26 +316,90 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 			: : "A"(msr_val), "c"(ecx)
 			);	
 
-	//cflush target data range
-	//, which is defined by r->ebx and r->ecx
-	asm volatile("mfence\n");
-	for(i=r->ebx;i<r->ecx;i+=64){
-	    asm volatile("clflush %0\n"
-			: "+m" ((void*)i));
-	}
 
 #endif
+
+  hptw_emhf_checked_guest_ctx_init_of_vcpu( &ctx, vcpu);
+  //Load hc_args from guest's virtual address into arg
+  rest = sizeof(hc_args);
+  addr = hptw_checked_access_va(&ctx.super,HPT_PROTS_R,ctx.cpl,r->ebx,rest,&len);
+  memcpy(&args,addr,sizeof(hc_args));
+
   
+  for(k=0;k<args.num;k++) {
+  uint32_t start,num,usize,skip; 
+  start = args.addr[k];
+  num = args.no[k];
+  usize = args.usize[k];
+  skip = args.skip[k];
+  //printf("\n%d-th region: from %p load %d entries every %d entries, each of %d bytes...\n", k, (void*)start, num, skip, usize);
+    
+  //cflush target data range
+  //, which is defined by r->ebx and r->ecx
+  for(j=0;j<num;j++){
+    rest = usize;  
+    cur = start+skip*j*usize; 
+    while(rest) {
+      asm volatile( "rdtsc\n"
+                     "mov %%edx,%0\n"
+                     "mov %%eax,%1\n"
+                     : "=r" (cycles_high), "=r"(cycles_low)
+                     : : "%rax", "%rbx", "%rcx", "%rdx");
+      addr = hptw_checked_access_va(&ctx.super,HPT_PROTS_W,ctx.cpl,cur+usize-rest,rest,&len);
+      asm volatile("rdtsc\n"
+                     "mov %%edx,%0\n"
+                     "mov %%eax,%1\n"
+                     : "=r" (cycles_high1), "=r"(cycles_low1)
+                     : : "%rax", "%rbx", "%rcx", "%rdx");
+      //printf("flush region %p to %p\n", (void*)start+size-rest,(void*)start+size-rest+len);
+      if (!addr) return 1;
+      asm volatile("mfence\n");
+      for(i=(u32)addr;i<((u32)addr+len);i+=4){
+        asm volatile("clflush (%0)\n"
+		     "mov (%0),%%eax\n"
+		:
+		: "r" ((void*)i)
+		: "eax");
+      }
+      rest -= len;
+      total_time += ((((uint64_t) cycles_high1 << 32)|cycles_low1)-(((uint64_t) cycles_high << 32)|cycles_low));
+    }
+  }
+
+  /*
+  // Reload the target range into cache
+  for(j=0;j<num;j++){
+    rest = usize;  
+    cur = start+skip*j*usize;
+    while(rest) {
+      addr = hptw_checked_access_va(&ctx.super,HPT_PROTS_W,ctx.cpl,cur+usize-rest,rest,&len);
+      //printf("preload region %p to %p\n", (void*)start+size-rest,(void*)start+size-rest+len);
+      if (!addr) return 1;
+      asm volatile("mfence\n");
+      for(i=(u32)addr;i<((u32)addr+len);i+=4){
+        asm volatile("mov (%0),%%eax\n"
+		:
+		: "r" ((void*)i)
+		: "eax" );
+      }
+      rest -= len;
+    }
+  }
+  */
+  }
+  printf("Total translation time: %u\n",total_time);
+
   return 0;
 }
 
 static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 {
-  uint32_t ecx=0;
-  uint64_t msr_val=0;
   printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
 
 #ifdef CAT_ENABLED
+  	uint32_t ecx=0;
+  	uint64_t msr_val=0;
+
 	//TODO: cflush target data range
 	
 	//enter CLOS[0]
@@ -758,7 +831,7 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
     HANDLE( TV_HC_TPMNVRAM_WRITEALL );
 #endif
     //XUM: handle vcpu locking/unlocking
-    HANDLE( TV_HC_CAT_INIT);
+    //HANDLE( TV_HC_CAT_INIT);
     HANDLE( TV_HC_VCPU_LOCK);
     HANDLE( TV_HC_VCPU_UNLOCK);
     HANDLE( TV_HC_INIT_PMC);

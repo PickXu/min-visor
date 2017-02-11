@@ -76,11 +76,11 @@ ADDL_LIBS += $(LIBBAREMETAL_BUILD)/_objects/$(LIBBAREMETAL_ARCHIVE)
 # Build-time configuration options; our project IS UNIQUE in this aspect
 # For an explanation of these options, see configure.ac or run:
 # ./configure --help
-export MP_VERSION := y
+export MP_VERSION := n
 export DEBUG_SERIAL := y
 export DEBUG_SERIAL_PORT := 0x3f8
 export DEBUG_VGA := n
-export DRT := y
+export DRT := n
 export DMAP := n
 export XMHF_TARGET_PLATFORM := x86-pc
 export XMHF_TARGET_ARCH := x86-vmx

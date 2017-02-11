@@ -548,6 +548,7 @@ u8 * xmhf_smpguest_arch_x86vmx_walk_pagetables(VCPU *vcpu, u32 vaddr){
     u32 pdpt_entry, pd_entry, pt_entry;
     u32 tmp;
 
+    printf("\nCR4 Enabled: %p\n", (void*)vaddr);
     // get fields from virtual addr 
     pdpt_index = pae_get_pdpt_index(vaddr);
     pd_index = pae_get_pdt_index(vaddr);
@@ -591,6 +592,7 @@ u8 * xmhf_smpguest_arch_x86vmx_walk_pagetables(VCPU *vcpu, u32 vaddr){
     u32 pd_entry, pt_entry;
     u32 tmp;
 
+    printf("\nCR4 Disabled: %p\n", (void*)vaddr);
     // get fields from virtual addr 
     pd_index = npae_get_pdt_index(vaddr);
     pt_index = npae_get_pt_index(vaddr);
