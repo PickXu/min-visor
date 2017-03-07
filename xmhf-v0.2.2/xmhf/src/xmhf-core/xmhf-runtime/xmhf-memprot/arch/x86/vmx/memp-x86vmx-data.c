@@ -67,3 +67,6 @@ u8 g_vmx_ept_pd_table_buffers[PAGE_SIZE_4K * PAE_PTRS_PER_PDPT * MAX_VCPU_ENTRIE
 //VMX EPT P table buffers
 //memprot
 u8 g_vmx_ept_p_table_buffers[PAGE_SIZE_4K * PAE_PTRS_PER_PDPT * PAE_PTRS_PER_PDT * MAX_VCPU_ENTRIES] __attribute__(( section(".palign_data") ));
+
+//XUM: Dedicated GVA to HVA mapping table
+//u8 gva2hva_table_buffers[1024*1024] __attribute__(( section(".palign_data") ));

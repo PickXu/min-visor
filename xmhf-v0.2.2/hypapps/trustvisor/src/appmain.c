@@ -72,6 +72,8 @@
 //#define IA32_L3_MASK_0 0x0c90
 //#define CAT_ENABLED
 
+volatile u32 occupied;
+
 const cmdline_option_t gc_trustvisor_available_cmdline_options[] = {
   { "nvpalpcr0", "0000000000000000000000000000000000000000"}, /* Req'd PCR[0] of NvMuxPal */
   { "nvenforce", "true" }, /* true|false - actually enforce nvpalpcr0? */
@@ -284,28 +286,56 @@ static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
 
 static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 {
-  hptw_emhf_checked_guest_ctx_t ctx;
-  uint32_t cur,rest,len;
-  u32 j,k,i;
-  void* addr;
-  hc_args args;
-  uint32_t cycles_high,cycles_low,cycles_high1,cycles_low1;
-  uint64_t total_time=0;
+  uint64_t msr_val=0;
+  uint32_t ecx=0;
+  uint16_t port;
+  uint8_t val;
+
+  //uint32_t cur,rest,len;
+  //void* addr;
+  //u32 j,k,i;
+  //hc_args args;
+  //hptw_emhf_checked_guest_ctx_t ctx;
+  //uint32_t cycles_high,cycles_low,cycles_high1,cycles_low1;
+  //uint64_t total_time=0;
   //printf("\nCPU%02x: VCPU_LOCK(%d) handler: HC_ARGS at %p\n",vcpu->id, r->eax,(void*)r->ebx); 
   
   /* Disable IF and TF */
   //vcpu->vmcs.guest_RFLAGS &= 0xfffffffffffffcff;
+  while(occupied);
+  occupied = 1;
+  r=r;
 
   /* Disable IF only */
   vcpu->vmcs.guest_RFLAGS &= 0xfffffffffffffdff;
 
   /* Disable NMI */
-  outb(inb(0x70)|0x80,0x70); 
+  port = 0x70;
+  asm volatile("inb %1,%0\n"
+		: "=a" (val)
+		: "Nd" (port)
+		);
+  val = val | 0x80;
+  asm volatile("outb %0, %1\n"
+	 	: : "a" (val), "Nd" (port)); 
+  //outb(inb(0x70)|0x80,0x70); 
+
+  /* Disable DR7 */
+  
+
+  /* Disable H/W Prefetcher */
+  ecx = 0x1a4;
+  asm volatile("rdmsr\n"
+                        : "=A"(msr_val)
+                        : "c"(ecx)
+                        );
+  msr_val = (msr_val|0xf);   
+  asm volatile("wrmsr\n"
+			: : "A"(msr_val), "c"(ecx)
+			);	
 
 #ifdef CAT_ENABLED
-  	uint64_t msr_val=0;
-	uint32_t ecx=0;
-	//enter CLOS[15]
+ 	//enter CLOS[15]
 	ecx = IA32_PQR_ASSOC;
 	asm volatile("rdmsr\n"
 			: "=A"(msr_val)
@@ -315,9 +345,8 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
 	asm volatile("wrmsr\n"
 			: : "A"(msr_val), "c"(ecx)
 			);	
-
-
 #endif
+  /*
 
   hptw_emhf_checked_guest_ctx_init_of_vcpu( &ctx, vcpu);
   //Load hc_args from guest's virtual address into arg
@@ -351,7 +380,7 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
                      "mov %%eax,%1\n"
                      : "=r" (cycles_high1), "=r"(cycles_low1)
                      : : "%rax", "%rbx", "%rcx", "%rdx");
-      //printf("flush region %p to %p\n", (void*)start+size-rest,(void*)start+size-rest+len);
+      //printf("flush region %p to %p\n", (void*)addr,(void*)addr+len);
       if (!addr) return 1;
       asm volatile("mfence\n");
       for(i=(u32)addr;i<((u32)addr+len);i+=4){
@@ -366,39 +395,25 @@ static u32 do_TV_HC_VCPU_LOCK(VCPU *vcpu, struct regs *r)
     }
   }
 
-  /*
-  // Reload the target range into cache
-  for(j=0;j<num;j++){
-    rest = usize;  
-    cur = start+skip*j*usize;
-    while(rest) {
-      addr = hptw_checked_access_va(&ctx.super,HPT_PROTS_W,ctx.cpl,cur+usize-rest,rest,&len);
-      //printf("preload region %p to %p\n", (void*)start+size-rest,(void*)start+size-rest+len);
-      if (!addr) return 1;
-      asm volatile("mfence\n");
-      for(i=(u32)addr;i<((u32)addr+len);i+=4){
-        asm volatile("mov (%0),%%eax\n"
-		:
-		: "r" ((void*)i)
-		: "eax" );
-      }
-      rest -= len;
-    }
-  }
-  */
   }
   printf("Total translation time: %u\n",total_time);
+  */
+  asm volatile("wbinvd\n");
 
   return 0;
 }
 
 static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 {
-  printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
+
+  uint16_t port;
+  uint8_t val;
+  //printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
+  r=r;
 
 #ifdef CAT_ENABLED
-  	uint32_t ecx=0;
-  	uint64_t msr_val=0;
+  uint32_t ecx=0;
+  uint64_t msr_val=0;
 
 	//TODO: cflush target data range
 	
@@ -413,10 +428,38 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 			: : "A"(msr_val), "c"(ecx)
 			);	
 #endif
+
+  /* Restore H/W Prefetcher */
+  /*
+  ecx = 0x1a4;
+  asm volatile("rdmsr\n"
+                        : "=A"(msr_val)
+                        : "c"(ecx)
+                        );
+  msr_val = (msr_val&(0xfffffffffffffff0));   
+  asm volatile("wrmsr\n"
+			: : "A"(msr_val), "c"(ecx)
+			);	
+  */
+
  
   vcpu->vmcs.guest_RFLAGS |= 0x0000000000000200;
  
-  outb(inb(0x70)&0x7f,0x70); 
+  /* Resume NMI */
+  port = 0x70;
+  asm volatile("inb %1,%0\n"
+		: "=a" (val)
+		: "Nd" (port)
+		);
+  val = val & 0x7f;
+  asm volatile("outb %0, %1\n"
+	 	: : "a" (val), "Nd" (port)); 
+  //outb(inb(0x70)&0x7f,0x70); 
+
+  asm volatile("wbinvd\n");
+
+
+  occupied = 0;
 
   return 0;
 }
@@ -425,11 +468,11 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 
 static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
 {
-  int eax,ecx;//,edx;
+  int eax,ecx,edx;
   printf("\nCPU%02x(%d): Init PMC on IA32_PERFEVTSEL%d with umask:event as %04x ...", vcpu->id, r->eax, r->ebx,(0xffff&r->ecx));
   vcpu->vmcs.control_VMX_cpu_based &= ~(1<<11|1<<12);
 
-  if ((r->ecx&0x00ff) == 0xa3) {
+  if ((r->ecx&0xff) == 0xa3) {
 	/*
 	if ((r->ecx&0xff00) != 0x0500 && (r->ecx&0xff00) != 0x0600 && (r->ecx&0xff00) != 0x0c00) {
 		eax = 0x00630000 | (0xffff&r->ecx);
@@ -449,6 +492,30 @@ static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
 		"wrmsr\n"
 		:
 		: "a" (eax), "c" (ecx)); 
+
+  // Enable corresponding PMC in IA32_PERF_GLOBAL_CTRL MSR
+  ecx = 0x38f;
+  asm volatile("rdmsr\n"
+	       : "=a" (eax), "=d" (edx)
+	       : "c" (ecx)
+		);
+  eax = eax | (1<<r->ebx);
+  asm volatile( "xor %%edx,%%edx\n"
+                "wrmsr\n"
+                :
+                : "a" (eax), "c" (ecx));
+
+   // Configure Offcore
+   if ((r->ecx&0xffff) == 0x01b7 || (r->ecx&0xffff) == 0x01bb) { 
+	eax = 0x300010000 | (1<<r->ebx) | (1<<(4+r->ebx)) | (1<<(7+r->ebx)) | (1<<(2+r->ebx)) | (r->ebx?0:9<<6) | (r->ebx?1<<11:0);
+	ecx = 0x1a6+r->ebx;
+	printf("Configure offcore events: %04x\n",(r->ecx&0xffff));
+	asm volatile("xor %%edx,%%edx\n"
+		"wrmsr\n"
+		:
+		: "a" (eax), "c" (ecx)); 
+   }
+
 
    printf("Guest CR3: 0x%x, Host CR3: 0x%x\n", vcpu->vmcs.guest_CR3, vcpu->vmcs.host_CR3);
 
