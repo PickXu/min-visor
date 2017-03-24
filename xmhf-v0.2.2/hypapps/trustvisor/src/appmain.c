@@ -507,7 +507,7 @@ static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
 
    // Configure Offcore
    if ((r->ecx&0xffff) == 0x01b7 || (r->ecx&0xffff) == 0x01bb) { 
-	eax = 0x300010000 | (1<<r->ebx) | (1<<(4+r->ebx)) | (1<<(7+r->ebx)) | (1<<(2+r->ebx)) | (r->ebx?0:9<<6) | (r->ebx?1<<11:0);
+	eax = 0x84000000 | (r->ebx?4:1);
 	ecx = 0x1a6+r->ebx;
 	printf("Configure offcore events: %04x\n",(r->ecx&0xffff));
 	asm volatile("xor %%edx,%%edx\n"
