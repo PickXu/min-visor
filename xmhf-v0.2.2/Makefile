@@ -107,7 +107,7 @@ export SED = sed
 export MKDIR = mkdir
 export CAT = cat
 
-export CCLIB = /usr/lib/gcc/i686-linux-gnu/4.6/
+export CCLIB = /usr/lib/gcc/i686-linux-gnu/4.8/
 
 # FIXME- this should be configurable
 # export CFLAGS=-m32

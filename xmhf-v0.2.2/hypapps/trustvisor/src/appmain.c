@@ -68,9 +68,10 @@
 #include <hptw.h>
 #include <hptw_emhf.h>
 
-//#define IA32_PQR_ASSOC 0x0c8f
-//#define IA32_L3_MASK_0 0x0c90
-//#define CAT_ENABLED
+#define IA32_PQR_ASSOC 0x0c8f
+#define IA32_L3_MASK_0 0x0c90
+#define IA32_L3_QOS_CFG 0x0c81
+#define CAT_ENABLED
 
 volatile u32 occupied;
 
@@ -257,7 +258,9 @@ static u32 do_TV_HC_UNREG(VCPU *vcpu, struct regs *r)
 #ifdef CAT_ENABLED
 static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
   //configure CBMs for all CLOSes
-  //CLOS[0-14] occupy 0-6MB, CLOS[15] occupies 6-8MB
+  // Total 20 bitmask bits per COS MSR
+  // Total Cache: 40MB
+  // CLOS[0-14] occupy 0-30MB, CLOS[15] occupies 30-40MB
   uint32_t i;
   uint64_t msr_val=0;
   printf("\nCPU%02x: CAT INIT(%d) handler...",vcpu->id, r->eax); 
@@ -266,7 +269,7 @@ static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
 		:"=A"(msr_val)
 		: "c"(IA32_L3_MASK_0+i)
 		);
-    msr_val = ((msr_val|0xfffff)&0xfffffffffffffff0);
+    msr_val = ((msr_val|0xfffff)&0xfffffffffff07fff);
     asm volatile("wrmsr\n"
 	 	: : "A" (msr_val),"c"(IA32_L3_MASK_0+i)
 		);
@@ -276,7 +279,7 @@ static u32 do_TV_HC_CAT_INIT(VCPU *vcpu, struct regs *r) {
                 : "=A"(msr_val)
 		: "c"(IA32_L3_MASK_0+15)
                 );
-  msr_val = (msr_val&0xfffffffffff0000f);
+  msr_val = ((msr_val|0xfffff)&0xffffffffffff8000);
     asm volatile("wrmsr\n"
                 : : "A" (msr_val),"c"(IA32_L3_MASK_0+15)
 		);
@@ -409,7 +412,6 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
   uint16_t port;
   uint8_t val;
   //printf("\nCPU%02x: VCPU_UNLOCK(%d) handler...",vcpu->id,r->eax); 
-  r=r;
 
 #ifdef CAT_ENABLED
   uint32_t ecx=0;
@@ -428,6 +430,7 @@ static u32 do_TV_HC_VCPU_UNLOCK(VCPU *vcpu, struct regs *r)
 			: : "A"(msr_val), "c"(ecx)
 			);	
 #endif
+  r=r;
 
   /* Restore H/W Prefetcher */
   /*
@@ -507,7 +510,9 @@ static u32 do_TV_HC_INIT_PMC(VCPU *vcpu, struct regs *r)
 
    // Configure Offcore
    if ((r->ecx&0xffff) == 0x01b7 || (r->ecx&0xffff) == 0x01bb) { 
-	eax = 0x84000000 | (r->ebx?4:1);
+        // Broadwell Xeon E5 v4
+	eax = 0x80400000 | (r->ebx?4:1);
+	//Skylake i7: eax = 0x84000000 | (r->ebx?4:1);
 	ecx = 0x1a6+r->ebx;
 	printf("Configure offcore events: %04x\n",(r->ecx&0xffff));
 	asm volatile("xor %%edx,%%edx\n"
@@ -898,7 +903,9 @@ u32 tv_app_handlehypercall(VCPU *vcpu, struct regs *r)
     HANDLE( TV_HC_TPMNVRAM_WRITEALL );
 #endif
     //XUM: handle vcpu locking/unlocking
-    //HANDLE( TV_HC_CAT_INIT);
+#ifdef CAT_ENABLED
+    HANDLE( TV_HC_CAT_INIT);
+#endif
     HANDLE( TV_HC_VCPU_LOCK);
     HANDLE( TV_HC_VCPU_UNLOCK);
     HANDLE( TV_HC_INIT_PMC);
